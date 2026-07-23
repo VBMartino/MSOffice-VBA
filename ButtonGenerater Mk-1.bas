@@ -1,4 +1,3 @@
-Attribute VB_Name = "Module11"
 Option Explicit
 
 '==========================
@@ -8,7 +7,7 @@ Public Button_TargetSheet As String          ' e.g., "PLA Pipe & Ftgs"
 Public Button_TargetColumn As Long           ' e.g., 7 for column G
 Public Button_StartRow As Long               ' e.g., 3
 Public Button_EndRow As Long                 ' e.g., 123
-Public Button_EndRowInclusive As Long            ' e.g., 123+1 inclusive of last line
+Public Button_EndRowInclusive As Long        ' e.g., 123+1 inclusive of last line
 
 ' Column used for the interim selects in Step 2 (original macro used column H)
 Public Button_HelperColumn As Long           ' e.g., 8 for column H
@@ -23,24 +22,60 @@ Public Button_ShapeStyle As MsoShapeStyleIndex
 Public Button_ShapeWidthPts As Double       ' width in points
 Public Button_ShapeHeightPts As Double      ' height in points
 
-
-
-
 Public Button_ClickMacro_Step1 As String     ' Assigned in Step1 (optional)
 Public Button_ClickMacro_Step4 As String     ' Assigned in Step4 (authoritative)
 
-' Initialize defaults once per session (call this before the sequence, or from Workbook_Open)
-Public Sub Button_InitGlobals()
+' Initialize defaults once per session via User Prompts
+' Changed to a Function so we can detect if the user clicked "Cancel"
+Public Function Button_InitGlobals() As Boolean
+    Dim userInput As Variant
 
-    Button_TargetSheet = "PLA Pipe & Ftgs"
-    Button_TargetColumn = 7                     ' Column A=1,B=2,C=3,D=4,ETC......
-    Button_HelperColumn = 8                     ' The helper column exists to serve as a parking spot for the curser
-    Button_StartRow = 3                         ' Set's Start row for the Target
-    Button_EndRow = 123                         ' Set's End row for the Target
-    Button_EndRowInclusive = 1 + Button_EndRow  ' ******DO NOT EDIT*******  Ensures that EndRow is inclusive of the last line when neccesary
+    ' 1. Target Sheet
+    userInput = Application.InputBox("Enter the Target Sheet Name:", "Target Sheet", "PLA Pipe & Ftgs", Type:=2)
+    If userInput = False Then Exit Function ' User clicked Cancel
+    Button_TargetSheet = CStr(userInput)
 
+    ' 2. Target Column
+    userInput = Application.InputBox("Enter Target Column Number (e.g., 7 for column G):", "Target Column", 7, Type:=1)
+    If userInput = False Then Exit Function
+    Button_TargetColumn = CLng(userInput)
+
+    ' 3. Helper Column
+    userInput = Application.InputBox("Enter Helper Column Number (e.g., 8 for column H):", "Helper Column", 8, Type:=1)
+    If userInput = False Then Exit Function
+    Button_HelperColumn = CLng(userInput)
+
+    ' 4. Start Row
+    userInput = Application.InputBox("Enter Start Row:", "Start Row", 3, Type:=1)
+    If userInput = False Then Exit Function
+    Button_StartRow = CLng(userInput)
+
+    ' 5. End Row
+    userInput = Application.InputBox("Enter End Row:", "End Row", 123, Type:=1)
+    If userInput = False Then Exit Function
+    Button_EndRow = CLng(userInput)
+    
+    ' ******DO NOT EDIT******* Ensures that EndRow is inclusive of the last line when necessary
+    Button_EndRowInclusive = 1 + Button_EndRow
+
+    ' 6. Button Text
+    userInput = Application.InputBox("Enter Button Text:", "Button Text", "+ OrderSheet", Type:=2)
+    If userInput = False Then Exit Function
+    Button_ShapeText = CStr(userInput)
+
+    ' 7. Step 1 Macro Assignment
+    userInput = Application.InputBox("Enter Macro Name for Step 1:", "Step 1 Macro", "AddToOS", Type:=2)
+    If userInput = False Then Exit Function
+    Button_ClickMacro_Step1 = CStr(userInput)
+
+    ' 8. Step 4 Macro Assignment
+    userInput = Application.InputBox("Enter Macro Name for Step 4:", "Step 4 Macro", "EngageSequenceCommand_PLA", Type:=2)
+    If userInput = False Then Exit Function
+    Button_ClickMacro_Step4 = CStr(userInput)
+
+    ' --- FORMATTING DEFAULTS ---
+    ' These are kept as defaults because asking end-users to type Enums or RGB codes will cause errors.
     Button_ShapeType = msoShapeFlowchartTerminator
-    Button_ShapeText = "+ OrderSheet"                 ' Set's Button text
     Button_FontName = "Arial"
     Button_FontSize = 8
     Button_FontBold = True
@@ -49,14 +84,9 @@ Public Sub Button_InitGlobals()
     Button_ShapeWidthPts = 72                   ' 1.0"  (72 points per inch)
     Button_ShapeHeightPts = 15                  ' 0.2"  (14.4 points = 0.2 inches)
 
-
-
-
-    Button_ClickMacro_Step1 = "AddToOS"       ' If you want Step1 to set OnAction
-    Button_ClickMacro_Step4 = "EngageSequenceCommand_PLA"   ' Final OnAction applied in Step4
-End Sub
-
-
+    ' If we made it here, all prompts were answered successfully
+    Button_InitGlobals = True
+End Function
 
 Public Sub Step0ClearShapesInTargetColumn()
     Dim ws As Worksheet
@@ -64,7 +94,7 @@ Public Sub Step0ClearShapesInTargetColumn()
     Dim shp As Shape
 
     ' Ensure globals are initialized
-    If Button_TargetSheet = vbNullString Then Button_InitGlobals
+    If Button_TargetSheet = vbNullString Then Call Button_InitGlobals
 
     ' Work on the configured target sheet
     Set ws = ThisWorkbook.Worksheets(Button_TargetSheet)
@@ -93,7 +123,7 @@ Public Sub Step1CreateStyledShapesMBoMSpec()
     Dim anchorCol As Long, anchorRow As Long
 
     ' Ensure globals are initialized
-    If Button_TargetSheet = vbNullString Then Button_InitGlobals
+    If Button_TargetSheet = vbNullString Then Call Button_InitGlobals
 
     Set ws = ThisWorkbook.Worksheets(Button_TargetSheet)
     anchorCol = Button_TargetColumn
@@ -155,7 +185,7 @@ Public Sub Step2ButtonCreation()
     Dim shapeName As String
 
     ' Ensure globals are initialized
-    If Button_TargetSheet = vbNullString Then Button_InitGlobals
+    If Button_TargetSheet = vbNullString Then Call Button_InitGlobals
 
     Set ws = ThisWorkbook.Worksheets(Button_TargetSheet)
     colLetter = Button_ColLetter(Button_TargetColumn)
@@ -191,7 +221,7 @@ Public Sub Step3RenameShapes_InColumnRange()
     Dim basePrefix As String
     Dim targetName As String
 
-    If Button_TargetSheet = vbNullString Then Button_InitGlobals
+    If Button_TargetSheet = vbNullString Then Call Button_InitGlobals
 
     Set ws = ActiveSheet                         ' or ThisWorkbook.Worksheets(Button_TargetSheet)
     Set rng = ws.Range(ws.Cells(Button_StartRow, Button_TargetColumn), ws.Cells(Button_EndRow, Button_TargetColumn))
@@ -255,7 +285,7 @@ Public Sub Step4AssignMacroToShapesInTargetRange()
     Dim cx As Double, cy As Double
     Dim updated As Long, skipped As Long
 
-    If Button_TargetSheet = vbNullString Then Button_InitGlobals
+    If Button_TargetSheet = vbNullString Then Call Button_InitGlobals
 
     Set ws = ThisWorkbook.Worksheets(Button_TargetSheet)
 
@@ -299,14 +329,18 @@ End Sub
 Public Sub RunButtonCreationSequence()
     On Error GoTo CleanFail
 
-    If Button_TargetSheet = vbNullString Then Button_InitGlobals
+    ' Attempt to initialize globals and gather user input.
+    ' If the user clicks "Cancel" on any prompt, exit gracefully.
+    If Not Button_InitGlobals() Then
+        MsgBox "Sequence cancelled by user.", vbInformation, "Cancelled"
+        GoTo CleanExit
+    End If
 
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     Application.Calculation = xlCalculationManual
     Application.StatusBar = "Running sequence..."
 
-    Button_InitGlobals
     PauseSeconds 0.1
     
     Step0ClearShapesInTargetColumn
@@ -341,4 +375,5 @@ Public Sub PauseSeconds(ByVal seconds As Single)
     Application.Wait t
     DoEvents
 End Sub
+
 
